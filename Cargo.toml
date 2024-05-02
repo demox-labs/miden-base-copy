@@ -31,10 +31,11 @@ codegen-units = 1
 lto = true
 
 [workspace.dependencies]
-assembly = { package = "miden-assembly", version = "0.9", default-features = false }
+assembly = { package = "miden-assembly", path = "../demox-miden-vm/assembly", default-features = false }
 miden-crypto = { version = "0.9", default-features = false }
-miden-prover = { version = "0.9", default-features = false }
-miden-stdlib = { version = "0.9", default-features = false }
-miden-verifier = { version = "0.9", default-features = false }
-vm-core = { package = "miden-core", version = "0.9", default-features = false }
-vm-processor = { package = "miden-processor", version = "0.9", default-features = false }
+miden-prover = { path = "../demox-miden-vm/prover", default-features = false }
+miden-stdlib = { path = "../demox-miden-vm/stdlib", default-features = false }
+miden-verifier = { path = "../demox-miden-vm/verifier", default-features = false }
+vm-core = { package = "miden-core", path = "../demox-miden-vm/core", default-features = false }
+vm-processor = { package = "miden-processor", path = "../demox-miden-vm/processor", default-features = false }
+web-sys = { version = "0.3", features = ["console"] }
