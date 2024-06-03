@@ -6,6 +6,7 @@ use std::{
     rc::Rc,
 };
 
+use maybe_async_await::{maybe_async, maybe_await};
 use miden_lib::{
     notes::create_p2id_note, transaction::ToTransactionKernelInputs, utils::Serializable,
 };
@@ -22,6 +23,8 @@ use miden_tx::{
     host::BasicAuthenticator, TransactionExecutor, TransactionHost, TransactionProgress,
 };
 use rand::rngs::StdRng;
+#[cfg(feature = "async")]
+use tokio;
 use vm_processor::{ExecutionOptions, RecAdviceProvider, Word};
 
 mod utils;
@@ -44,6 +47,7 @@ impl fmt::Display for Benchmark {
     }
 }
 
+#[cfg(not(feature = "async"))]
 fn main() -> Result<(), String> {
     // create a template file for benchmark results
     let path = Path::new("bench-tx/bench-tx.json");
@@ -62,24 +66,49 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "async")]
+#[tokio::main]
+async fn main() -> Result<(), String> {
+    // create a template file for benchmark results
+    let path = Path::new("bench-tx/bench-tx.json");
+    let mut file = File::create(path).map_err(|e| e.to_string())?;
+    file.write_all(b"{}").map_err(|e| e.to_string())?;
+
+    // run all available benchmarks
+    let benchmark_results = vec![
+        (Benchmark::Simple, benchmark_default_tx().await?),
+        (Benchmark::P2ID, benchmark_p2id().await?),
+    ];
+
+    // store benchmark results in the JSON file
+    write_bench_results_to_json(path, benchmark_results)?;
+
+    Ok(())
+}
+
 // BENCHMARKS
 // ================================================================================================
 
 /// Runs the default transaction with empty transaction script and two default notes.
+#[maybe_async]
 pub fn benchmark_default_tx() -> Result<TransactionProgress, String> {
     let data_store = MockDataStore::default();
     let mut executor: TransactionExecutor<_, ()> =
         TransactionExecutor::new(data_store.clone(), None).with_tracing();
 
     let account_id = data_store.account.id();
-    executor.load_account(account_id).map_err(|e| e.to_string())?;
+    maybe_await!(executor.load_account(account_id)).map_err(|e| e.to_string())?;
 
     let block_ref = data_store.block_header.block_num();
     let note_ids = data_store.notes.iter().map(|note| note.id()).collect::<Vec<_>>();
 
-    let transaction = executor
-        .prepare_transaction(account_id, block_ref, &note_ids, data_store.tx_args().clone())
-        .map_err(|e| e.to_string())?;
+    let transaction = maybe_await!(executor.prepare_transaction(
+        account_id,
+        block_ref,
+        &note_ids,
+        data_store.tx_args().clone()
+    ))
+    .map_err(|e| e.to_string())?;
 
     let (stack_inputs, advice_inputs) = transaction.get_kernel_inputs();
     let advice_recorder: RecAdviceProvider = advice_inputs.into();
@@ -98,6 +127,7 @@ pub fn benchmark_default_tx() -> Result<TransactionProgress, String> {
 }
 
 /// Runs the transaction which consumes a P2ID note into a basic wallet.
+#[maybe_async]
 pub fn benchmark_p2id() -> Result<TransactionProgress, String> {
     // Create assets
     let faucet_id = AccountId::try_from(ACCOUNT_ID_FUNGIBLE_FAUCET_ON_CHAIN).unwrap();
@@ -132,7 +162,7 @@ pub fn benchmark_p2id() -> Result<TransactionProgress, String> {
 
     let mut executor: TransactionExecutor<_, ()> =
         TransactionExecutor::new(data_store.clone(), None).with_tracing();
-    executor.load_account(target_account_id).unwrap();
+    maybe_await!(executor.load_account(target_account_id)).unwrap();
 
     let block_ref = data_store.block_header.block_num();
     let note_ids = data_store.notes.iter().map(|note| note.id()).collect::<Vec<_>>();
@@ -149,9 +179,13 @@ pub fn benchmark_p2id() -> Result<TransactionProgress, String> {
     let tx_args_target = TransactionArgs::with_tx_script(tx_script_target);
 
     // execute transaction
-    let transaction = executor
-        .prepare_transaction(target_account_id, block_ref, &note_ids, tx_args_target)
-        .map_err(|e| e.to_string())?;
+    let transaction = maybe_await!(executor.prepare_transaction(
+        target_account_id,
+        block_ref,
+        &note_ids,
+        tx_args_target
+    ))
+    .map_err(|e| e.to_string())?;
 
     let (stack_inputs, advice_inputs) = transaction.get_kernel_inputs();
     let advice_recorder: RecAdviceProvider = advice_inputs.into();

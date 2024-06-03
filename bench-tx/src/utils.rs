@@ -1,6 +1,7 @@
 extern crate alloc;
 pub use alloc::collections::BTreeMap;
 
+use maybe_async_await::maybe_async;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     accounts::{Account, AccountCode, AccountId, AccountStorage, SlotItem, StorageSlot},
@@ -114,6 +115,7 @@ impl Default for MockDataStore {
 }
 
 impl DataStore for MockDataStore {
+    #[maybe_async]
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
@@ -141,6 +143,7 @@ impl DataStore for MockDataStore {
         .unwrap())
     }
 
+    #[maybe_async]
     fn get_account_code(&self, account_id: AccountId) -> Result<ModuleAst, DataStoreError> {
         assert_eq!(account_id, self.account.id());
         Ok(self.account.code().module().clone())

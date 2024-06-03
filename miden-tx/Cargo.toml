@@ -17,11 +17,24 @@ name = "miden-tx"
 path = "tests/integration/main.rs"
 
 [features]
-concurrent = ["miden-lib/concurrent", "miden-objects/concurrent", "miden-prover/concurrent", "std"]
+concurrent = [
+    "miden-lib/concurrent",
+    "miden-objects/concurrent",
+    "miden-prover/concurrent",
+    "std",
+]
 default = ["std"]
-std = ["miden-lib/std", "miden-objects/std", "miden-prover/std", "miden-verifier/std", "vm-processor/std"]
+std = [
+    "miden-lib/std",
+    "miden-objects/std",
+    "miden-prover/std",
+    "miden-verifier/std",
+    "vm-processor/std",
+]
+async = ["maybe-async-await/async"]
 
 [dependencies]
+maybe-async-await = { git = "https://github.com/phklive/maybe-async-await.git" }
 miden-lib = { path = "../miden-lib", version = "0.3", default-features = false }
 miden-objects = { path = "../objects", version = "0.3", default-features = false }
 miden-prover = { workspace = true }

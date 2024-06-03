@@ -1,3 +1,4 @@
+use maybe_async_await::maybe_async;
 use miden_objects::{
     accounts::AccountId, assembly::ModuleAst, notes::NoteId, transaction::TransactionInputs,
 };
@@ -25,6 +26,7 @@ pub trait DataStore {
     /// - Any of the notes with the specified IDs were already consumed.
     /// - The combination of specified inputs resulted in a transaction input error.
     /// - The data store encountered some internal error
+    #[maybe_async]
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
@@ -33,5 +35,6 @@ pub trait DataStore {
     ) -> Result<TransactionInputs, DataStoreError>;
 
     /// Returns the account code [ModuleAst] associated with the specified [AccountId].
+    #[maybe_async]
     fn get_account_code(&self, account_id: AccountId) -> Result<ModuleAst, DataStoreError>;
 }

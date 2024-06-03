@@ -1,5 +1,6 @@
 use alloc::{rc::Rc, vec::Vec};
 
+use maybe_async_await::{maybe_async, maybe_await};
 use miden_lib::transaction::{ToTransactionKernelInputs, TransactionKernel};
 use miden_objects::{
     assembly::ProgramAst,
@@ -102,13 +103,12 @@ impl<D: DataStore, A: TransactionAuthenticator> TransactionExecutor<D, A> {
     /// Returns an error if:
     /// - If the account code cannot be fetched from the [DataStore].
     /// - If the account code fails to be loaded into the compiler.
+    #[maybe_async]
     pub fn load_account(
         &mut self,
         account_id: AccountId,
     ) -> Result<AccountCode, TransactionExecutorError> {
-        let account_code = self
-            .data_store
-            .get_account_code(account_id)
+        let account_code = maybe_await!(self.data_store.get_account_code(account_id))
             .map_err(TransactionExecutorError::FetchAccountCodeFailed)?;
         self.compiler
             .load_account(account_id, account_code)
@@ -174,6 +174,7 @@ impl<D: DataStore, A: TransactionAuthenticator> TransactionExecutor<D, A> {
     /// - If required data can not be fetched from the [DataStore].
     /// - If the transaction program can not be compiled.
     /// - If the transaction program can not be executed.
+    #[maybe_async]
     pub fn execute_transaction(
         &self,
         account_id: AccountId,
@@ -181,7 +182,8 @@ impl<D: DataStore, A: TransactionAuthenticator> TransactionExecutor<D, A> {
         notes: &[NoteId],
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let transaction = self.prepare_transaction(account_id, block_ref, notes, tx_args)?;
+        let transaction =
+            maybe_await!(self.prepare_transaction(account_id, block_ref, notes, tx_args))?;
 
         let (stack_inputs, advice_inputs) = transaction.get_kernel_inputs();
         let advice_recorder: RecAdviceProvider = advice_inputs.into();
@@ -221,6 +223,7 @@ impl<D: DataStore, A: TransactionAuthenticator> TransactionExecutor<D, A> {
     /// Returns an error if:
     /// - If required data can not be fetched from the [DataStore].
     /// - If the transaction can not be compiled.
+    #[maybe_async]
     pub fn prepare_transaction(
         &self,
         account_id: AccountId,
@@ -228,10 +231,9 @@ impl<D: DataStore, A: TransactionAuthenticator> TransactionExecutor<D, A> {
         notes: &[NoteId],
         tx_args: TransactionArgs,
     ) -> Result<PreparedTransaction, TransactionExecutorError> {
-        let tx_inputs = self
-            .data_store
-            .get_transaction_inputs(account_id, block_ref, notes)
-            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let tx_inputs =
+            maybe_await!(self.data_store.get_transaction_inputs(account_id, block_ref, notes))
+                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         let tx_program = self
             .compiler
